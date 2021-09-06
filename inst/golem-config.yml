@@ -1,0 +1,8 @@
+default:
+  golem_name: RIA4PL
+  golem_version: 0.0.0.9000
+  app_prod: no
+production:
+  app_prod: yes
+dev:
+  golem_wd: P:/6) Oncology/4PL regression/RIA4PL
