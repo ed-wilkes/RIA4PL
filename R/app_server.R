@@ -53,8 +53,8 @@ app_server <- function( input, output, session ) {
       <p style='margin-left: 20px'>
       <b>Model fit:</b><br>
       - Once <b>[Fit model]</b> is pressed, a robust 4PL regression model will be fitted to the data and displayed here<br>
-      - Blue points represent the mean counts for each standard<br>
-      - Red points represent individual measurements for each standard<br>
+      - Blue points represent the individual counts for each standard<br>
+      - Red triangles represent identified outlying observations<br>
     
       <b>Parameters:</b><br>
       - Once fitted, the robust 4PL model's parameters will be shown here<br>
@@ -69,13 +69,11 @@ app_server <- function( input, output, session ) {
   })
   
   ## Data upload and viewer ----
-  # Data upload
+  # Data upload with a fixed layout
   df_all <- reactive({
     readFile(input$input_file, headings = input$header_option, sheet = NULL) %>%
-      dplyr::rename(Tube = V1, Count = V2) %>%
       dplyr::mutate(
-        Sample = rep(c("NSB", "ZA", "STD1", "STD2", "STD3", "STD4", "STD5", "STD6", "STD7", "STD8", "STD9", "STD7", "STD4", "STD2"), each = 2)
-        ,Conc = rep(c(NA, 0, 200, 100, 50, 25, 12.5, 6.25, 3.125, 1.5625, 0.7813, 3.125, 25, 100), each = 2)
+        Conc = rep(c(NA, 0, 200, 100, 50, 25, 12.5, 6.25, 3.125, 1.5625, 0.7813, 0, 1.5625, 12.5, 100, 0, 0, 3.125, 12.5, 100, 1.5625, 12.5, 100, 0, 1.5625, 12.5, 100, 0, 3.125, 12.5, 100, 1.5625, 12.5, 100, 0), each = 2)
       )
   })
   
@@ -100,7 +98,7 @@ app_server <- function( input, output, session ) {
         )
       )
     ) %>%
-      DT::formatStyle(columns = colnames(df_all()), fontSize = "100%")
+      DT::formatStyle(columns = colnames(df_all()), fontSize = "90%")
     
   })
   
@@ -110,21 +108,24 @@ app_server <- function( input, output, session ) {
     # This reactive function wrangles the input data for use in later functions.
     req(input$input_file)
     df <- df_all() %>%
-      # Calculate means, subtract blank, and calculate response vs ZA
-      dplyr::group_by(Sample) %>%
+      # Calculate means, SDs, and CVs for display
+      dplyr::group_by(Name) %>%
       dplyr::summarise(
-        Count_mean = mean(Count, na.rm = TRUE)
-        ,Conc = mean(Conc)
-        ,Count_SD = sd(Count, na.rm = TRUE)
-      ) %>%
-      dplyr::mutate(
-        Subtract = (Count_mean - Count_mean[Sample == "NSB"])
-        ,Response =  Count_mean / Count_mean[Sample == "ZA"]
-        ,Logit = qlogis(Response)
-        ,Log_Conc = log10(Conc)
-      ) %>%
-      dplyr::filter(Sample != "NSB")
+        Conc = mean(Conc)
+        ,Count_mean = round(mean(Counts, na.rm = TRUE), 0)
+        ,Count_SD = round(sd(Counts, na.rm = TRUE), 0)
+        ,Count_CV = round(Count_SD / Count_mean * 100, 1)
+        ,n = n()
+      ) # %>%
+      # dplyr::mutate(
+      #   Subtract = (Count_mean - Count_mean[Name == "NSB"])
+      #   ,Response =  Count_mean / Count_mean[Name == "ZA"]
+      #   ,Logit = qlogis(Response)
+      #   ,Log_Conc = log10(Conc)
+      # ) %>%
+      # dplyr::filter(Name != "NSB")
     return(df)
+    
   })
   
   # Reactive values
@@ -136,7 +137,7 @@ app_server <- function( input, output, session ) {
     # This observes the "Fit model" button being pressed and then fits a 4PL
     # regression model to the data and updates the reactiveValue "model_output"
     req(input$input_file)
-    model_output$fit <- dr4pl::dr4pl(Count_mean ~ Conc, data = wrangle_data(), method.robust = "absolute", method.init = "Mead")
+    model_output$fit <- dr4pl::dr4pl(Counts ~ Conc, data = df_all(), method.robust = "absolute", method.init = "Mead")
     notification$value <- "<br>Check the <b>[Model fitting]</b> tab for the results" 
   })
   
@@ -164,8 +165,8 @@ app_server <- function( input, output, session ) {
     if (is.null(model_output$fit)) {
       return()
     } else {
-      plot(model_output$fit)+
-        geom_point(data = df_all(), aes(x = Conc, y = Count), alpha = 0.5, colour = "red2")+
+      plot(model_output$fit$robust.plot)+
+        # geom_point(data = df_all(), aes(x = Conc, y = Count), alpha = 0.5, colour = "red2")+
         # geom_errorbar(
         #   data = wrangle_data()
         #   ,aes(ymin = Subtract - Count_SD, ymax = Subtract + Count_SD)
@@ -181,14 +182,41 @@ app_server <- function( input, output, session ) {
     
   })
   
-  output$model_fit_logit <- renderPlot({
-    p <- ggplot(wrangle_data(), aes(x = Conc, y = Logit))+
-      geom_point(colour = "blue2", size = 3)+
-      scale_x_log10()+
-      xlab("hCG concentration (U/L)")+
-      ylab("Logit(mean counts)")+
-      plotTheme(14)
-    return(p)
+  ## Deprecated ############################################
+  # output$model_fit_logit <- renderPlot({
+  #   p <- ggplot(wrangle_data(), aes(x = Conc, y = Logit))+
+  #     geom_point(colour = "blue2", size = 3)+
+  #     scale_x_log10()+
+  #     xlab("hCG concentration (U/L)")+
+  #     ylab("Logit(mean counts)")+
+  #     plotTheme(14)
+  #   return(p)
+  # })
+  ##########################################################
+  
+  # Summarised data display
+  output$dt_summary <- DT::renderDataTable({
+    
+    req(input$input_file)
+    dt <- DT::datatable(
+      wrangle_data()
+      ,class = "cell-border stripe"
+      ,rownames = FALSE
+      ,extension = c("Buttons", "Scroller")
+      ,options = list(
+        paging = FALSE
+        ,scrollX = TRUE
+        # ,scroller = TRUE
+        # ,scrollY = 600
+        ,headerCallback = DT::JS(
+          "function(thead) {",
+          "  $(thead).css('font-size', '14px');",
+          "}"
+        )
+      )
+    ) %>%
+      DT::formatStyle(columns = colnames(wrangle_data()), fontSize = "90%")
+    
   })
   
   # Parameter display

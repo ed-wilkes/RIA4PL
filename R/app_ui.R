@@ -206,13 +206,12 @@ app_ui <- function(request) {
               ,conditionalPanel(
                 condition = "output.file_upload == true && input.run_model != 0"
                 ,box(
-                  title = "Logit-log transformation"
+                  title = "Curve data summary"
                   ,solidHeader = TRUE
                   ,status = "primary"
                   ,width = 6
                   ,shinycssloaders::withSpinner(
-                    plotOutput("model_fit_logit", height = 625)
-                    ,type = 6
+                    DT::dataTableOutput("dt_summary")
                   )
                 )
               )

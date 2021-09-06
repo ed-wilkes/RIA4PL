@@ -11,6 +11,7 @@ Imports:
     ggplot2,
     magrittr,
     shiny,
+    shinycssloaders,
     shinydashboard
 Encoding: UTF-8
 LazyData: true
