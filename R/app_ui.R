@@ -190,59 +190,70 @@ app_ui <- function(request) {
             tabName = "modelling"
             ,p()
             ,fluidRow(
-              conditionalPanel(
-                condition = "output.file_upload == true && input.run_model != 0"
-                ,box(
-                  title = "Model fit"
-                  ,solidHeader = TRUE
-                  ,status = "primary"
-                  ,width = 6
-                  ,shinycssloaders::withSpinner(
-                    plotOutput("model_fit", height = 625)
-                    ,type = 6
+              column(
+                width = 6
+                ,conditionalPanel(
+                  condition = "output.file_upload == true && input.run_model != 0"
+                  ,box(
+                    title = "Model fit"
+                    ,solidHeader = TRUE
+                    ,status = "primary"
+                    ,width = 12
+                    ,shinycssloaders::withSpinner(
+                      plotOutput("model_fit", height = 625)
+                      ,type = 6
+                    )
                   )
                 )
               )
-              ,conditionalPanel(
-                condition = "output.file_upload == true && input.run_model != 0"
-                ,box(
-                  title = "Curve data summary"
-                  ,solidHeader = TRUE
-                  ,status = "primary"
-                  ,width = 6
-                  ,shinycssloaders::withSpinner(
-                    DT::dataTableOutput("dt_summary")
+              ,column(
+                width = 6
+                ,conditionalPanel(
+                  condition = "output.file_upload == true && input.run_model != 0"
+                  ,box(
+                    title = "Curve data summary"
+                    ,solidHeader = TRUE
+                    ,status = "primary"
+                    ,width = 12
+                    ,shinycssloaders::withSpinner(
+                      DT::dataTableOutput("dt_summary")
+                      ,type = 6
+                    )
                   )
                 )
               )
             )
             ,fluidRow(
-              p()
-              ,conditionalPanel(
-                condition = "output.file_upload == true && input.run_model != 0"
-                ,box(
-                  title = "Model parameters"
-                  ,solidHeader = TRUE
-                  ,status = "primary"
-                  ,width = 8
-                  ,shinycssloaders::withSpinner(uiOutput("parameters"), type = 6)
+              column(
+                width = 6
+                ,conditionalPanel(
+                  condition = "output.file_upload == true && input.run_model != 0"
+                  ,box(
+                    title = "Data export"
+                    ,solidHeader = TRUE
+                    ,status = "primary"
+                    ,width = 4
+                    ,downloadButton("export_parameters", "Export parameters", width = "100%")
+                  )
                 )
               )
-              ,conditionalPanel(
-                condition = "output.file_upload == true && input.run_model != 0"
-                ,box(
-                  title = "Data export"
-                  ,solidHeader = TRUE
-                  ,status = "primary"
-                  ,width = 2
-                  ,downloadButton("export_parameters", "Export parameters", width = "100%")
+              ,column(
+                width = 6
+                ,conditionalPanel(
+                  condition = "output.file_upload == true && input.run_model != 0"
+                  ,box(
+                    title = "Model parameters"
+                    ,solidHeader = TRUE
+                    ,status = "primary"
+                    ,width = 12
+                    ,shinycssloaders::withSpinner(uiOutput("parameters"), type = 6)
+                  )
                 )
               )
             )
           )
-          
         ) # closes tabItems
-        
+      
         # Window sizing code ----
         ,tags$head(
           tags$script('

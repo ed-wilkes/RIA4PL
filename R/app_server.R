@@ -34,33 +34,45 @@ app_server <- function( input, output, session ) {
   
   output$data_upload_info <- renderUI({
     HTML(
-      "<br><b>Data upload tab:</b><br>
+      "<br><b>Info and data upload tab:</b><br><br>
     
       <p style='margin-left: 20px'>
-      <b>Data upload:</b><br>
-      - Using the <b>[Browse]</b> button, find and select the .csv file containing your data<br>
-    
-      <b>Data viewer:</b><br>
-      - Once uploaded, your data are available to view under the <b>Data viewer</b> tab<br>
-      - Check the data have uploaded correctly and, when ready, press the <b>[Fit model]</b> button<br>"
+      <b>Data upload:</b>
+      <ul>
+        <li> Using the <b>[Browse]</b> button, find and select the .csv file containing your data>
+      </ul>
+      <p style='margin-left: 20px'>
+      <b>Data viewer:</b>
+      <ul>
+        <li>Once uploaded, your data are available to view under the <b>Data viewer</b> tab<br>
+        <li>Check the data have uploaded correctly and, when ready, press the <b>[Fit model]</b> button
+      </ul>
+      "
     )
   })
   
   output$modelling_info <- renderUI({
     HTML(
-      "<br><b>Model fitting tab:</b><br>
+      "<br><b>Model fitting tab:</b><br><br>
     
       <p style='margin-left: 20px'>
-      <b>Model fit:</b><br>
-      - Once <b>[Fit model]</b> is pressed, a robust 4PL regression model will be fitted to the data and displayed here<br>
-      - Blue points represent the individual counts for each standard<br>
-      - Red triangles represent identified outlying observations<br>
-    
-      <b>Parameters:</b><br>
-      - Once fitted, the robust 4PL model's parameters will be shown here<br>
-      
-      <b>Export parameters:</b><br>
-      - Click <b>[Export]</b> to export the model's parameters as a .csv file<br>"
+      <b>Model fit:</b>
+      <ul>
+        <li>Once <b>[Fit model]</b> is pressed, a robust 4PL regression model will be fitted to the data and displayed here
+        <li>Blue points represent the individual counts for each standard
+        <li>Red triangles represent identified outlying observations
+      </ul>
+      <p style='margin-left: 20px'>
+      <b>Parameters:</b>
+      <ul>
+        <li>Once fitted, the robust 4PL model's parameters will be shown here
+      </ul>
+      <p style='margin-left: 20px'>
+      <b>Export parameters:</b>
+      <ul>
+        <li>Click <b>[Export]</b> to export the model's parameters as a .csv file
+      </ul>
+      "
     )
   })
   
