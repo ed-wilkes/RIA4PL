@@ -229,11 +229,11 @@ app_ui <- function(request) {
                 ,conditionalPanel(
                   condition = "output.file_upload == true && input.run_model != 0"
                   ,box(
-                    title = "Data export"
+                    title = "Model parameters"
                     ,solidHeader = TRUE
                     ,status = "primary"
-                    ,width = 4
-                    ,downloadButton("export_parameters", "Export parameters", width = "100%")
+                    ,width = 12
+                    ,shinycssloaders::withSpinner(uiOutput("parameters"), type = 6)
                   )
                 )
               )
@@ -242,11 +242,11 @@ app_ui <- function(request) {
                 ,conditionalPanel(
                   condition = "output.file_upload == true && input.run_model != 0"
                   ,box(
-                    title = "Model parameters"
+                    title = "Data export"
                     ,solidHeader = TRUE
                     ,status = "primary"
-                    ,width = 12
-                    ,shinycssloaders::withSpinner(uiOutput("parameters"), type = 6)
+                    ,width = 4
+                    ,downloadButton("export_parameters", "Export parameters", width = "100%")
                   )
                 )
               )

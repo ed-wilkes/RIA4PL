@@ -81,11 +81,22 @@ app_server <- function( input, output, session ) {
   })
   
   ## Data upload and viewer ----
-  # Data upload with a fixed layout
   df_all <- reactive({
     readFile(input$input_file, headings = input$header_option, sheet = NULL) %>%
       dplyr::mutate(
-        Conc = rep(c(NA, 0, 200, 100, 50, 25, 12.5, 6.25, 3.125, 1.5625, 0.7813, 0, 1.5625, 12.5, 100, 0, 0, 3.125, 12.5, 100, 1.5625, 12.5, 100, 0, 1.5625, 12.5, 100, 0, 3.125, 12.5, 100, 1.5625, 12.5, 100, 0), each = 2)
+        Conc = case_when(
+          Name == "STD 1" ~ 200
+          ,Name == "STD 2" ~ 100
+          ,Name == "STD 3" ~ 50
+          ,Name == "STD 4" ~ 25
+          ,Name == "STD 5" ~ 12.5
+          ,Name == "STD 6" ~ 6.25
+          ,Name == "STD 7" ~ 3.125
+          ,Name == "STD 8" ~ 1.5625
+          ,Name == "STD 9" ~ 0.7813
+          ,Name == "ZA" ~ 0
+          ,TRUE ~ NA_real_ # i.e. NSB and and other additions
+        )
       )
   })
   
@@ -127,7 +138,7 @@ app_server <- function( input, output, session ) {
         ,Count_mean = round(mean(Counts, na.rm = TRUE), 0)
         ,Count_SD = round(sd(Counts, na.rm = TRUE), 0)
         ,Count_CV = round(Count_SD / Count_mean * 100, 1)
-        ,n = n()
+        ,n = dplyr::n()
       ) # %>%
       # dplyr::mutate(
       #   Subtract = (Count_mean - Count_mean[Name == "NSB"])
@@ -243,7 +254,7 @@ app_server <- function( input, output, session ) {
       boxes <- list(
         fluidRow(
           valueBox(
-            subtitle = "A (estimated reference, ZA)"
+            subtitle = "A (estimated ZA)"
             ,color = "blue"
             ,width = 3
             ,value = round(model_output$fit$parameters[1], 1)
@@ -261,7 +272,7 @@ app_server <- function( input, output, session ) {
             ,value = round(model_output$fit$parameters[2], 2)
           )
           ,valueBox(
-            subtitle = "D (estimated blank, NSB)"
+            subtitle = "D (estimated NSB)"
             ,color = "blue"
             ,width = 3
             ,value = round(model_output$fit$parameters[4], 1)
