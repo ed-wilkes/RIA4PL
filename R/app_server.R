@@ -84,7 +84,7 @@ app_server <- function( input, output, session ) {
   df_all <- reactive({
     readFile(input$input_file, headings = input$header_option, sheet = NULL) %>%
       dplyr::mutate(
-        Conc = case_when(
+        Conc = dplyr::case_when(
           Name == "STD 1" ~ 200
           ,Name == "STD 2" ~ 100
           ,Name == "STD 3" ~ 50
@@ -200,7 +200,8 @@ app_server <- function( input, output, session ) {
         xlab("hCG concentration (U/L)")+
         ylab("Mean counts (cpm)")+
         labs(title = "")+
-        plotTheme(12)
+        plotTheme(12)+
+        annotation_logticks(sides = "b")
     }
     
   })
