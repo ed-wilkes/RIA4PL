@@ -30,7 +30,6 @@ app_ui <- function(request) {
       ## Sidebar ----
       ,dashboardSidebar(
         sidebarMenu(
-          # menuItem("Information", tabName = "information", icon = icon("info-circle"))
           menuItem("Info and data upload", tabName = "data_upload", icon = icon("file-upload"))
           ,menuItem("Model fitting", tabName = "modelling", icon = icon("chart-line"))
         )
@@ -99,28 +98,6 @@ app_ui <- function(request) {
         # Tabs ----
         ,tabItems(
           
-          # "Information" ----
-          # tabItem(
-          #   tabName = "information"
-          #   ,p()
-          #   ,column(
-          #     width = 12
-          #     ,fluidRow(
-          #       box(
-          #         title = "General information"
-          #         ,solidHeader = TRUE
-          #         ,collapsible = TRUE
-          #         ,status = "primary"
-          #         ,tags$img(src = "www/logo-nwlp.png", width = "50%")
-          #         ,htmlOutput("welcome_info", inline = TRUE)
-          #         ,htmlOutput("data_upload_info", inline = TRUE)
-          #         ,htmlOutput("modelling_info", inline = TRUE)
-          #         ,htmlOutput("contact_info", inline = TRUE)
-          #       )
-          #     )
-          #   )
-          # )
-          
           # "Data upload" ----
           tabItem(
             tabName = "data_upload"
@@ -157,6 +134,12 @@ app_ui <- function(request) {
                   )
                   ,conditionalPanel(
                     condition = "output.file_upload == true"
+                    ,radioButtons(
+                      inputId = "model_choice"
+                      ,label = "Which model would you like to fit?"
+                      ,choiceNames = list("Robust (default)", "Regular")
+                      ,choiceValues = c("dr4pl", "drc")
+                    )
                     ,actionButton(
                       inputId = "run_model"
                       ,label = "Fit model"

@@ -6,6 +6,7 @@
 #' @import ggplot2
 #' @importFrom magrittr "%>%"
 #' @import dr4pl
+#' @import drc
 #' @noRd
 app_server <- function( input, output, session ) {
   
@@ -152,15 +153,22 @@ app_server <- function( input, output, session ) {
   })
   
   # Reactive values
-  model_output <- reactiveValues(fit = NULL)
+  model_output <- reactiveValues(model = NULL)
   notification <- reactiveValues(value = NULL)
   
   # "Fit model" button observations
   observeEvent(input$run_model, {
     # This observes the "Fit model" button being pressed and then fits a 4PL
-    # regression model to the data and updates the reactiveValue "model_output"
+    # regression model to the data and updates the reactiveValue "model_output".
+    # The model fitted to the data depends on "model_choice" and uses either
+    # dr4pl (robust) or drc (regular)
     req(input$input_file)
-    model_output$fit <- dr4pl::dr4pl(Counts ~ Conc, data = df_all(), method.robust = "absolute", method.init = "Mead")
+    
+    if (input$model_choice == "dr4pl") {
+      model_output$model <- dr4pl::dr4pl(Counts ~ Conc, data = df_all(), method.robust = "absolute", method.init = "Mead")
+    } else if (input$model_choice == "drc") {
+      model_output$model <- drc::drm(Counts ~ Conc, data = df_all(), fct = LL.4(names = c("Slope", "Lower", "Upper", "IC50")))
+    }
     notification$value <- "<br>Check the <b>[Model fitting]</b> tab for the results" 
   })
   
@@ -168,55 +176,41 @@ app_server <- function( input, output, session ) {
     HTML(notification$value)
   })
   
-  ## Deprecated ##########################################################
-  # fit_model <- reactive({
-  #   
-  #   # This reactive function fits a 4PL regression model to the data and
-  #   # updates the reactiveValue "model_output"
-  #   req(input$input_file)
-  #   model <- dr4pl::dr4pl(Subtract ~ Conc, data = wrangle_data())
-  #   return(model)
-  #   
-  # })
-  ########################################################################
-  
   # Model fitting
   output$model_fit <- renderPlot({
     
     req(input$input_file)
     
-    if (is.null(model_output$fit)) {
+    if (is.null(model_output$model)) {
       return()
     } else {
-      plot(model_output$fit$robust.plot)+
-        # geom_point(data = df_all(), aes(x = Conc, y = Count), alpha = 0.5, colour = "red2")+
-        # geom_errorbar(
-        #   data = wrangle_data()
-        #   ,aes(ymin = Subtract - Count_SD, ymax = Subtract + Count_SD)
-        #   ,colour = "blue"
-        #   ,width = 0
-        #   ,size = 1
-        # )+
-        xlab("hCG concentration (U/L)")+
-        ylab("Mean counts (cpm)")+
-        labs(title = "")+
-        plotTheme(12)+
-        annotation_logticks(sides = "b")
+      if (input$model_choice == "dr4pl") {
+        
+        plot(model_output$model$robust.plot)+
+          xlab("hCG concentration (U/L)")+
+          ylab("Mean counts (cpm)")+
+          labs(title = "")+
+          plotTheme(12)+
+          annotation_logticks(sides = "b")
+        
+      } else if (input$model_choice == "drc") {
+        
+        df_pred <- data.frame(Conc = exp(seq(log(0.7813), log(200), length.out = 1000)))
+        df_pred$Counts_pred <- predict(object = model_output$model, newdata = df_pred)
+        
+        ggplot(df_all(), aes(x = Conc, y = Counts))+
+          geom_point(alpha = 0.75, size = 4, colour = "blue2")+
+          geom_line(data = df_pred, aes(x = Conc, y = Counts_pred), size = 1)+
+          plotTheme(14)+
+          scale_x_log10()+
+          annotation_logticks(side = "b")+
+          xlab("hCG concentration (U/L)")+
+          ylab("Mean counts (cpm)")
+        
+      }
     }
     
   })
-  
-  ## Deprecated ############################################
-  # output$model_fit_logit <- renderPlot({
-  #   p <- ggplot(wrangle_data(), aes(x = Conc, y = Logit))+
-  #     geom_point(colour = "blue2", size = 3)+
-  #     scale_x_log10()+
-  #     xlab("hCG concentration (U/L)")+
-  #     ylab("Logit(mean counts)")+
-  #     plotTheme(14)
-  #   return(p)
-  # })
-  ##########################################################
   
   # Summarised data display
   output$dt_summary <- DT::renderDataTable({
@@ -248,35 +242,53 @@ app_server <- function( input, output, session ) {
     
     req(input$input_file)
     
-    if (is.null(model_output$fit)) {
+    if (is.null(model_output$model)) {
       return()
     } else {
-     
+      
+      if (input$model_choice == "dr4pl") {
+        params <- c(
+          model_output$model$parameters[1]
+          ,model_output$model$parameters[3]
+          ,model_output$model$parameters[2]
+          ,model_output$model$parameters[4]
+        )
+        print(params)
+      } else if (input$model_choice == "drc") {
+        params <- c(
+          model_output$model$fit$par[3]
+          ,model_output$model$fit$par[1]
+          ,model_output$model$fit$par[4]
+          ,model_output$model$fit$par[2]
+        )
+        print(params)
+      }
+      
       boxes <- list(
         fluidRow(
           valueBox(
             subtitle = "A (estimated ZA)"
             ,color = "blue"
             ,width = 3
-            ,value = round(model_output$fit$parameters[1], 1)
+            ,value = round(params[1], 1)
           )
           ,valueBox(
             subtitle = "B (slope)"
             ,color = "blue"
             ,width = 3
-            ,value = round(model_output$fit$parameters[3], 2)
+            ,value = round(params[2], 2)
           )
           ,valueBox(
             subtitle = "C (ED50)"
             ,color = "blue"
             ,width = 3
-            ,value = round(model_output$fit$parameters[2], 2)
+            ,value = round(params[3], 2)
           )
           ,valueBox(
             subtitle = "D (estimated NSB)"
             ,color = "blue"
             ,width = 3
-            ,value = round(model_output$fit$parameters[4], 1)
+            ,value = round(params[4], 1)
           )
         )
       )
@@ -293,8 +305,8 @@ app_server <- function( input, output, session ) {
     ,content = function(file) {
       write.csv(
         data.frame(
-          Params = c("A", "B", "C", "D")
-          ,Values = model_output$fit$parameters
+          Parameter = c("A", "B", "C", "D")
+          ,Value = model_output$fit$parameters
         )
         ,file
         ,row.names = FALSE)
