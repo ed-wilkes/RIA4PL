@@ -183,7 +183,7 @@ app_ui <- function(request) {
                     ,status = "primary"
                     ,width = 12
                     ,shinycssloaders::withSpinner(
-                      plotOutput("model_fit", height = 625)
+                      plotly::plotlyOutput("model_fit", height = 625)
                       ,type = 6
                     )
                   )

@@ -7,6 +7,7 @@
 #' @importFrom magrittr "%>%"
 #' @import dr4pl
 #' @import drc
+#' @import plotly
 #' @noRd
 app_server <- function( input, output, session ) {
   
@@ -167,7 +168,7 @@ app_server <- function( input, output, session ) {
     if (input$model_choice == "dr4pl") {
       model_output$model <- dr4pl::dr4pl(Counts ~ Conc, data = df_all(), method.robust = "absolute", method.init = "Mead")
     } else if (input$model_choice == "drc") {
-      model_output$model <- drc::drm(Counts ~ Conc, data = df_all(), fct = LL.4(names = c("Slope", "Lower", "Upper", "IC50")))
+      model_output$model <- drc::drm(Counts ~ Conc, data = df_all(), fct = drc::LL.4(names = c("Slope", "Lower", "Upper", "IC50")))
     }
     notification$value <- "<br>Check the <b>[Model fitting]</b> tab for the results" 
   })
@@ -177,7 +178,7 @@ app_server <- function( input, output, session ) {
   })
   
   # Model fitting
-  output$model_fit <- renderPlot({
+  output$model_fit <- plotly::renderPlotly({
     
     req(input$input_file)
     
@@ -186,26 +187,80 @@ app_server <- function( input, output, session ) {
     } else {
       if (input$model_choice == "dr4pl") {
         
-        plot(model_output$model$robust.plot)+
-          xlab("hCG concentration (U/L)")+
-          ylab("Mean counts (cpm)")+
-          labs(title = "")+
-          plotTheme(12)+
-          annotation_logticks(sides = "b")
+        df_points <- df_all() %>%
+          filter(!is.na(Conc)) %>%
+          mutate(outlier = "No")
+        df_points$outlier[model_output$model$idx.outlier] <- "Yes"
+        
+        params <- c(
+          model_output$model$parameters[1]
+          ,model_output$model$parameters[3]
+          ,model_output$model$parameters[2]
+          ,model_output$model$parameters[4]
+        )
+        df_pred <- data.frame(Conc = exp(seq(log(0.7813), log(200), length.out = 1000)))
+        df_pred$Counts_pred <- predictCurve(params = params, data = df_pred)
+          
+        p <- plotly::ggplotly(
+          ggplot(df_points, aes(x = Conc, y = Counts))+
+            geom_point(
+              alpha = 0.75
+              ,size = 4
+              ,aes(colour = outlier, text = paste0("Standard: ", Name, "\nConcentration: ", Conc, "\nTube: ", ReactionTube, "\nCount: ", Counts))
+            )+
+            geom_line(
+              data = df_pred
+              ,size = 1
+              ,aes(x = Conc, y = Counts_pred) #, text = paste0("Concentration: ", Conc, "\nPredicted counts: ", Counts_pred))
+            )+
+            plotTheme(14)+
+            scale_x_log10()+
+            annotation_logticks(side = "b")+
+            xlab("hCG concentration (U/L)")+
+            ylab("Mean counts (cpm)")+
+            expand_limits(y = 0)+
+            scale_colour_manual(values = c("blue2", "red2"))+
+            theme(legend.position = "none")
+          ,tooltip = "text"
+        )
+        return(p)
+        
+        # p <- plot(model_output$model$robust.plot)+
+        #   xlab("hCG concentration (U/L)")+
+        #   ylab("Mean counts (cpm)")+
+        #   labs(title = "")+
+        #   plotTheme(12)+
+        #   annotation_logticks(sides = "b")+
+        #   expand_limits(y = 0)
+        # return(p)
         
       } else if (input$model_choice == "drc") {
         
         df_pred <- data.frame(Conc = exp(seq(log(0.7813), log(200), length.out = 1000)))
         df_pred$Counts_pred <- predict(object = model_output$model, newdata = df_pred)
         
-        ggplot(df_all(), aes(x = Conc, y = Counts))+
-          geom_point(alpha = 0.75, size = 4, colour = "blue2")+
-          geom_line(data = df_pred, aes(x = Conc, y = Counts_pred), size = 1)+
-          plotTheme(14)+
-          scale_x_log10()+
-          annotation_logticks(side = "b")+
-          xlab("hCG concentration (U/L)")+
-          ylab("Mean counts (cpm)")
+        p <- plotly::ggplotly(
+          ggplot(df_all(), aes(x = Conc, y = Counts))+
+            geom_point(
+              alpha = 0.75
+              ,size = 4
+              ,colour = "blue2"
+              ,aes(text = paste0("Standard: ", Name, "\nConcentration: ", Conc, "\nTube: ", ReactionTube, "\nCount: ", Counts))
+            )+
+            geom_line(
+              data = df_pred
+              ,size = 1
+              ,aes(x = Conc, y = Counts_pred) #, text = paste0("Concentration: ", Conc, "\nPredicted counts: ", Counts_pred))
+            )+
+            plotTheme(14)+
+            scale_x_log10()+
+            annotation_logticks(side = "b")+
+            xlab("hCG concentration (U/L)")+
+            ylab("Mean counts (cpm)")+
+            expand_limits(y = 0)
+          ,tooltip = "text"
+        )
+        return(p)
         
       }
     }
@@ -253,7 +308,6 @@ app_server <- function( input, output, session ) {
           ,model_output$model$parameters[2]
           ,model_output$model$parameters[4]
         )
-        print(params)
       } else if (input$model_choice == "drc") {
         params <- c(
           model_output$model$fit$par[3]
@@ -261,7 +315,6 @@ app_server <- function( input, output, session ) {
           ,model_output$model$fit$par[4]
           ,model_output$model$fit$par[2]
         )
-        print(params)
       }
       
       boxes <- list(
