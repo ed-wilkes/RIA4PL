@@ -20,11 +20,10 @@ app_ui <- function(request) {
       
       ## Header ----
       ,dashboardHeader(
-        # title = tags$a(
-        #   href='http://www.nwlpathology.nhs.uk'
-        #   ,tags$img(src = 'www/logo-nhs.png', width = '50%')
-        # )
-        title = "RIA4PL"
+        title = tags$a(
+          href='http://www.nwlpathology.nhs.uk'
+          ,tags$img(src = 'www/logo-ria4pl.png', width = '65%')
+        )
       )
       
       ## Sidebar ----
