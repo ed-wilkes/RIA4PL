@@ -46,8 +46,11 @@ app_server <- function( input, output, session ) {
       <p style='margin-left: 20px'>
       <b>Data viewer:</b>
       <ul>
-        <li>Once uploaded, your data are available to view under the <b>Data viewer</b> tab<br>
-        <li>Check the data have uploaded correctly and, when ready, press the <b>[Fit model]</b> button
+        <li>Once uploaded, your data are available to view under the <b>Data viewer</b> tab
+        <li>Check the data you have uploaded carefully
+        <li>Choose the model type you wish to fit (defaults to 'Robust' - this is optimal in most instances)
+        <li>When ready, press the <b>[Fit model]</b> button
+        <li>If the model type is changed retrospectively, the analysis will automatically update
       </ul>
       "
     )
@@ -60,7 +63,7 @@ app_server <- function( input, output, session ) {
       <p style='margin-left: 20px'>
       <b>Model fit:</b>
       <ul>
-        <li>Once <b>[Fit model]</b> is pressed, a robust 4PL regression model will be fitted to the data and displayed here
+        <li>Once <b>[Fit model]</b> is pressed, the chosen 4PL regression model will be fitted to the data and displayed here
         <li>Blue points represent the individual counts for each standard
         <li>Red triangles represent identified outlying observations
       </ul>
@@ -136,12 +139,16 @@ app_server <- function( input, output, session ) {
       # Calculate means, SDs, and CVs for display
       dplyr::group_by(Name) %>%
       dplyr::summarise(
-        Conc = mean(Conc)
-        ,Count_mean = round(mean(Counts, na.rm = TRUE), 0)
-        ,Count_SD = round(sd(Counts, na.rm = TRUE), 0)
-        ,Count_CV = round(Count_SD / Count_mean * 100, 1)
+        `[hCG] (U/L)` = mean(Conc)
+        ,`Count mean (cpm)` = round(mean(Counts, na.rm = TRUE), 0)
+        ,`Count SD (cpm)` = round(sd(Counts, na.rm = TRUE), 0)
+        ,`Count CV (%)` = round(`Count SD (cpm)` / `Count mean (cpm)` * 100, 1)
         ,n = dplyr::n()
       ) # %>%
+    
+      ##################################################################
+      # Deprecated code that subtracts NSB and calculates response vs ZA
+      ##################################################################
       # dplyr::mutate(
       #   Subtract = (Count_mean - Count_mean[Name == "NSB"])
       #   ,Response =  Count_mean / Count_mean[Name == "ZA"]
@@ -149,20 +156,29 @@ app_server <- function( input, output, session ) {
       #   ,Log_Conc = log10(Conc)
       # ) %>%
       # dplyr::filter(Name != "NSB")
+    
     return(df)
     
   })
   
-  # Reactive values
+  # Reactive values definition
   model_output <- reactiveValues(model = NULL)
   notification <- reactiveValues(value = NULL)
+  plot_output <- reactiveValues(plot = NULL, boxes = NULL)
   
-  # "Fit model" button observations
-  observeEvent(input$run_model, {
+  # Listen to both "run_model" and "model_choice" inputs
+  toListen <- reactive({
+    list(input$run_model, input$model_choice)
+  })
+  
+  # Observe toListen() and execute code if values change
+  observeEvent(toListen(), {
+    
     # This observes the "Fit model" button being pressed and then fits a 4PL
-    # regression model to the data and updates the reactiveValue "model_output".
+    # regression model to the data and updates the reactiveValue "model_output",
+    # "notification", and "plot_output".
     # The model fitted to the data depends on "model_choice" and uses either
-    # dr4pl (robust) or drc (regular)
+    # dr4pl (robust) or drc (regular). 
     req(input$input_file)
     
     if (input$model_choice == "dr4pl") {
@@ -171,25 +187,16 @@ app_server <- function( input, output, session ) {
       model_output$model <- drc::drm(Counts ~ Conc, data = df_all(), fct = drc::LL.4(names = c("Slope", "Lower", "Upper", "IC50")))
     }
     notification$value <- "<br>Check the <b>[Model fitting]</b> tab for the results" 
-  })
-  
-  output$run_button_text <- renderUI({
-    HTML(notification$value)
-  })
-  
-  # Model fitting
-  output$model_fit <- plotly::renderPlotly({
     
-    req(input$input_file)
-    
+    # Make plots ----
     if (is.null(model_output$model)) {
       return()
     } else {
       if (input$model_choice == "dr4pl") {
         
         df_points <- df_all() %>%
-          filter(!is.na(Conc)) %>%
-          mutate(outlier = "No")
+          dplyr::filter(!is.na(Conc)) %>%
+          dplyr::mutate(outlier = "No")
         df_points$outlier[model_output$model$idx.outlier] <- "Yes"
         
         params <- c(
@@ -200,70 +207,146 @@ app_server <- function( input, output, session ) {
         )
         df_pred <- data.frame(Conc = exp(seq(log(0.7813), log(200), length.out = 1000)))
         df_pred$Counts_pred <- predictCurve(params = params, data = df_pred)
-          
-        p <- plotly::ggplotly(
-          ggplot(df_points, aes(x = Conc, y = Counts))+
-            geom_point(
+        
+        plot_output$plot <- plotly::ggplotly(
+          ggplot2::ggplot(df_points, aes(x = Conc, y = Counts))+
+            ggplot2::geom_point(
               alpha = 0.75
               ,size = 4
-              ,aes(colour = outlier, text = paste0("Standard: ", Name, "\nConcentration: ", Conc, "\nTube: ", ReactionTube, "\nCount: ", Counts))
+              ,ggplot2::aes(
+                colour = outlier
+                ,text = paste0("Standard: ", Name, "\nConcentration: ", Conc, "\nTube: ", ReactionTube, "\nCount: ", Counts)
+                ,shape = outlier
+              )
             )+
-            geom_line(
+            ggplot2::geom_line(
               data = df_pred
               ,size = 1
-              ,aes(x = Conc, y = Counts_pred) #, text = paste0("Concentration: ", Conc, "\nPredicted counts: ", Counts_pred))
+              ,ggplot2::aes(x = Conc, y = Counts_pred)
             )+
             plotTheme(14)+
-            scale_x_log10()+
-            annotation_logticks(side = "b")+
-            xlab("hCG concentration (U/L)")+
-            ylab("Mean counts (cpm)")+
-            expand_limits(y = 0)+
-            scale_colour_manual(values = c("blue2", "red2"))+
-            theme(legend.position = "none")
+            ggplot2::scale_x_log10()+
+            ggplot2::annotation_logticks(side = "b")+
+            ggplot2::xlab("hCG concentration (U/L)")+
+            ggplot2::ylab("Gamma counts (cpm)")+
+            ggplot2::expand_limits(y = 0)+
+            ggplot2::scale_colour_manual(values = c("blue2", "red2"))+
+            ggplot2::theme(legend.position = "none")+
+            ggplot2::scale_shape_manual(values = c(16,17))
           ,tooltip = "text"
         )
-        return(p)
-        
-        # p <- plot(model_output$model$robust.plot)+
-        #   xlab("hCG concentration (U/L)")+
-        #   ylab("Mean counts (cpm)")+
-        #   labs(title = "")+
-        #   plotTheme(12)+
-        #   annotation_logticks(sides = "b")+
-        #   expand_limits(y = 0)
-        # return(p)
         
       } else if (input$model_choice == "drc") {
         
         df_pred <- data.frame(Conc = exp(seq(log(0.7813), log(200), length.out = 1000)))
         df_pred$Counts_pred <- predict(object = model_output$model, newdata = df_pred)
         
-        p <- plotly::ggplotly(
-          ggplot(df_all(), aes(x = Conc, y = Counts))+
-            geom_point(
+        plot_output$plot <- plotly::ggplotly(
+          ggplot2::ggplot(df_all(), aes(x = Conc, y = Counts))+
+            ggplot2::geom_point(
               alpha = 0.75
               ,size = 4
               ,colour = "blue2"
-              ,aes(text = paste0("Standard: ", Name, "\nConcentration: ", Conc, "\nTube: ", ReactionTube, "\nCount: ", Counts))
+              ,shape = 16
+              ,ggplot2::aes(text = paste0("Standard: ", Name, "\nConcentration: ", Conc, "\nTube: ", ReactionTube, "\nCount: ", Counts))
             )+
-            geom_line(
+            ggplot2::geom_line(
               data = df_pred
               ,size = 1
-              ,aes(x = Conc, y = Counts_pred) #, text = paste0("Concentration: ", Conc, "\nPredicted counts: ", Counts_pred))
+              ,ggplot2::aes(x = Conc, y = Counts_pred)
             )+
             plotTheme(14)+
-            scale_x_log10()+
-            annotation_logticks(side = "b")+
-            xlab("hCG concentration (U/L)")+
-            ylab("Mean counts (cpm)")+
-            expand_limits(y = 0)
+            ggplot2::scale_x_log10()+
+            ggplot2::annotation_logticks(side = "b")+
+            ggplot2::xlab("hCG concentration (U/L)")+
+            ggplot2::ylab("Gamma counts (cpm)")+
+            ggplot2::expand_limits(y = 0)
           ,tooltip = "text"
         )
-        return(p)
         
       }
     }
+    
+    # Make valueBoxes ----
+    if (is.null(model_output$model)) {
+      return()
+    } else {
+      
+      if (input$model_choice == "dr4pl") {
+        params <- c(
+          model_output$model$parameters[1]
+          ,model_output$model$parameters[3]
+          ,model_output$model$parameters[2]
+          ,model_output$model$parameters[4]
+        )
+      } else if (input$model_choice == "drc") {
+        params <- c(
+          model_output$model$fit$par[3]
+          ,model_output$model$fit$par[1]
+          ,model_output$model$fit$par[4]
+          ,model_output$model$fit$par[2]
+        )
+      }
+      
+      plot_output$boxes <- list(
+        fluidRow(
+          valueBox(
+            subtitle = "A (estimated ZA)"
+            ,color = "blue"
+            ,width = 3
+            ,value = round(params[1], 1)
+          )
+          ,valueBox(
+            subtitle = "B (slope)"
+            ,color = "blue"
+            ,width = 3
+            ,value = round(params[2], 2)
+          )
+          ,valueBox(
+            subtitle = "C (ED50)"
+            ,color = "blue"
+            ,width = 3
+            ,value = round(params[3], 2)
+          )
+          ,valueBox(
+            subtitle = "D (estimated NSB)"
+            ,color = "blue"
+            ,width = 3
+            ,value = round(params[4], 1)
+          )
+        )
+      )
+    }
+    
+  })
+  
+  # Update text
+  output$run_button_text <- renderUI({
+    HTML(notification$value)
+  })
+  
+  # Model fit plot
+  output$model_fit <- plotly::renderPlotly({
+    plot_output$plot
+  })
+  
+  # Dynamic UI to display plot in box with dynamic title
+  output$plot_box <- renderUI({
+    
+    req(input$model_choice)
+    if (input$model_choice == "dr4pl") {
+      fit_type = "robust"
+    } else {
+      fit_type = "regular"
+    }
+    
+    box(
+      title = paste0("Model fit (", fit_type, ")")
+      ,solidHeader = TRUE
+      ,status = "primary"
+      ,width = 12
+      ,plotly::plotlyOutput("model_fit", height = 575)
+    )
     
   })
   
@@ -292,65 +375,12 @@ app_server <- function( input, output, session ) {
     
   })
   
-  # Parameter display
+  # Parameter display in valueBoxes
   output$parameters <- renderUI({
-    
-    req(input$input_file)
-    
-    if (is.null(model_output$model)) {
-      return()
-    } else {
-      
-      if (input$model_choice == "dr4pl") {
-        params <- c(
-          model_output$model$parameters[1]
-          ,model_output$model$parameters[3]
-          ,model_output$model$parameters[2]
-          ,model_output$model$parameters[4]
-        )
-      } else if (input$model_choice == "drc") {
-        params <- c(
-          model_output$model$fit$par[3]
-          ,model_output$model$fit$par[1]
-          ,model_output$model$fit$par[4]
-          ,model_output$model$fit$par[2]
-        )
-      }
-      
-      boxes <- list(
-        fluidRow(
-          valueBox(
-            subtitle = "A (estimated ZA)"
-            ,color = "blue"
-            ,width = 3
-            ,value = round(params[1], 1)
-          )
-          ,valueBox(
-            subtitle = "B (slope)"
-            ,color = "blue"
-            ,width = 3
-            ,value = round(params[2], 2)
-          )
-          ,valueBox(
-            subtitle = "C (ED50)"
-            ,color = "blue"
-            ,width = 3
-            ,value = round(params[3], 2)
-          )
-          ,valueBox(
-            subtitle = "D (estimated NSB)"
-            ,color = "blue"
-            ,width = 3
-            ,value = round(params[4], 1)
-          )
-        )
-      )
-      return(boxes)
-    }
-    
+    plot_output$boxes
   })
   
-  # Export button
+  # Export button (exports as a .csv file for PDM pickup)
   output$export_parameters <- downloadHandler(
     filename = function() {
       paste(input$input_file, "_parameters.csv", sep = "")

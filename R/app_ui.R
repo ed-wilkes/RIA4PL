@@ -110,7 +110,7 @@ app_ui <- function(request) {
                   ,solidHeader = TRUE
                   ,status = "primary"
                   ,width = 12
-                  ,tags$img(src = "www/logo-nwlp.png", width = "50%")
+                  ,tags$img(src = "www/logo-nwlp.png", width = "40%")
                   ,htmlOutput("welcome_info", inline = TRUE)
                   ,htmlOutput("data_upload_info", inline = TRUE)
                   ,htmlOutput("modelling_info", inline = TRUE)
@@ -177,15 +177,9 @@ app_ui <- function(request) {
                 width = 6
                 ,conditionalPanel(
                   condition = "output.file_upload == true && input.run_model != 0"
-                  ,box(
-                    title = "Model fit"
-                    ,solidHeader = TRUE
-                    ,status = "primary"
-                    ,width = 12
-                    ,shinycssloaders::withSpinner(
-                      plotly::plotlyOutput("model_fit", height = 625)
-                      ,type = 6
-                    )
+                  ,shinycssloaders::withSpinner(
+                    uiOutput("plot_box")
+                    ,type = 6
                   )
                 )
               )

@@ -6,10 +6,13 @@ Description: PKG_DESC.
 License: What license is it under?
 Imports: 
     config,
+    dplyr,
     dr4pl,
+    drc,
     golem,
     ggplot2,
     magrittr,
+    plotly,
     shiny,
     shinycssloaders,
     shinydashboard
