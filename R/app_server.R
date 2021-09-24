@@ -36,7 +36,7 @@ app_server <- function( input, output, session ) {
   
   output$data_upload_info <- renderUI({
     HTML(
-      "<br><b>Info and data upload tab:</b><br><br>
+      "<br><b>Info and data upload tab:</b><br>
     
       <p style='margin-left: 20px'>
       <b>Data upload:</b>
@@ -58,7 +58,7 @@ app_server <- function( input, output, session ) {
   
   output$modelling_info <- renderUI({
     HTML(
-      "<br><b>Model fitting tab:</b><br><br>
+      "<br><b>Model fitting tab:</b><br>
     
       <p style='margin-left: 20px'>
       <b>Model fit:</b>
@@ -98,7 +98,7 @@ app_server <- function( input, output, session ) {
           ,Name == "STD 6" ~ 6.25
           ,Name == "STD 7" ~ 3.125
           ,Name == "STD 8" ~ 1.5625
-          ,Name == "STD 9" ~ 0.7813
+          ,Name == "STD 9" ~ 0.78125
           ,Name == "ZA" ~ 0
           ,TRUE ~ NA_real_ # i.e. NSB and and other additions
         )
@@ -184,11 +184,13 @@ app_server <- function( input, output, session ) {
     if (input$model_choice == "dr4pl") {
       model_output$model <- dr4pl::dr4pl(Counts ~ Conc, data = df_all(), method.robust = "absolute", method.init = "Mead")
     } else if (input$model_choice == "drc") {
-      model_output$model <- drc::drm(Counts ~ Conc, data = df_all(), fct = drc::LL.4(names = c("Slope", "Lower", "Upper", "IC50")))
+      model_output$model <- drc::drm(Counts ~ Conc, data = df_all(), robust = "median", fct = drc::LL.4(names = c("Slope", "Lower", "Upper", "IC50")))
     }
     notification$value <- "<br>Check the <b>[Model fitting]</b> tab for the results" 
     
     # Make plots ----
+    df_pred <- data.frame(Conc = exp(seq(log(0.78125), log(200), length.out = 2000)))
+    
     if (is.null(model_output$model)) {
       return()
     } else {
@@ -205,7 +207,6 @@ app_server <- function( input, output, session ) {
           ,model_output$model$parameters[2]
           ,model_output$model$parameters[4]
         )
-        df_pred <- data.frame(Conc = exp(seq(log(0.7813), log(200), length.out = 1000)))
         df_pred$Counts_pred <- predictCurve(params = params, data = df_pred)
         
         plot_output$plot <- plotly::ggplotly(
@@ -238,7 +239,6 @@ app_server <- function( input, output, session ) {
         
       } else if (input$model_choice == "drc") {
         
-        df_pred <- data.frame(Conc = exp(seq(log(0.7813), log(200), length.out = 1000)))
         df_pred$Counts_pred <- predict(object = model_output$model, newdata = df_pred)
         
         plot_output$plot <- plotly::ggplotly(
@@ -282,7 +282,7 @@ app_server <- function( input, output, session ) {
       } else if (input$model_choice == "drc") {
         params <- c(
           model_output$model$fit$par[3]
-          ,model_output$model$fit$par[1]
+          ,-model_output$model$fit$par[1]
           ,model_output$model$fit$par[4]
           ,model_output$model$fit$par[2]
         )
@@ -383,16 +383,35 @@ app_server <- function( input, output, session ) {
   # Export button (exports as a .csv file for PDM pickup)
   output$export_parameters <- downloadHandler(
     filename = function() {
-      paste(input$input_file, "_parameters.csv", sep = "")
+      paste("Parameters_HCXXXXXX", ".csv", sep = "")
     }
     ,content = function(file) {
-      write.csv(
-        data.frame(
-          Parameter = c("A", "B", "C", "D")
-          ,Value = model_output$fit$parameters
+      
+      if (input$model_choice == "dr4pl") {
+        params <- c(
+          model_output$model$parameters[1]
+          ,model_output$model$parameters[3]
+          ,model_output$model$parameters[2]
+          ,model_output$model$parameters[4]
         )
-        ,file
-        ,row.names = FALSE)
+      } else if (input$model_choice == "drc") {
+        params <- c(
+          model_output$model$fit$par[3]
+          ,-model_output$model$fit$par[1]
+          ,model_output$model$fit$par[4]
+          ,model_output$model$fit$par[2]
+        )
+      }
+      
+      write.csv(
+        x = data.frame(
+          Parameter = c("A", "B", "C", "D")
+          ,Value = params
+        )
+        ,file = file
+        ,row.names = FALSE
+      )
+      
     }
   )
   
