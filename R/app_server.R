@@ -216,7 +216,7 @@ app_server <- function( input, output, session ) {
               ,size = 4
               ,ggplot2::aes(
                 colour = outlier
-                ,text = paste0("Standard: ", Name, "\nConcentration: ", Conc, "\nTube: ", ReactionTube, "\nCount: ", Counts)
+                ,text = paste0("Standard: ", Name, "\nConcentration: ", Conc, " U/L\nTube: ", ReactionTube, "\nCount: ", Counts, "\nOutlier: ", outlier)
                 ,shape = outlier
               )
             )+
