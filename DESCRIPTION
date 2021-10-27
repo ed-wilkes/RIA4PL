@@ -9,6 +9,7 @@ Imports:
     dplyr,
     dr4pl,
     drc,
+    DT,
     golem,
     ggplot2,
     magrittr,

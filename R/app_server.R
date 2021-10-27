@@ -166,9 +166,13 @@ app_server <- function( input, output, session ) {
   notification <- reactiveValues(value = NULL)
   plot_output <- reactiveValues(plot = NULL, boxes = NULL)
   
-  # Listen to both "run_model" and "model_choice" inputs
+  observeEvent(input$run_model, {
+    notification$value <- "<br>Check the <b>[Model fitting]</b> tab for the results" 
+  })
+  
+  # Listen to both "run_model", "model_choice", and "input_file" inputs
   toListen <- reactive({
-    list(input$run_model, input$model_choice)
+    list(input$run_model, input$model_choice, input$input_file)
   })
   
   # Observe toListen() and execute code if values change
@@ -186,7 +190,6 @@ app_server <- function( input, output, session ) {
     } else if (input$model_choice == "drc") {
       model_output$model <- drc::drm(Counts ~ Conc, data = df_all(), robust = "median", fct = drc::LL.4(names = c("Slope", "Lower", "Upper", "IC50")))
     }
-    notification$value <- "<br>Check the <b>[Model fitting]</b> tab for the results" 
     
     # Make plots ----
     df_pred <- data.frame(Conc = exp(seq(log(0.78125), log(200), length.out = 2000)))
@@ -216,7 +219,7 @@ app_server <- function( input, output, session ) {
               ,size = 4
               ,ggplot2::aes(
                 colour = outlier
-                ,text = paste0("Standard: ", Name, "\nConcentration: ", Conc, " U/L\nTube: ", ReactionTube, "\nCount: ", Counts, "\nOutlier: ", outlier)
+                ,text = paste0("Standard: ", Name, "\nConcentration: ", Conc, "\nTube: ", ReactionTube, "\nCount: ", Counts)
                 ,shape = outlier
               )
             )+
