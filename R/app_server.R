@@ -41,7 +41,7 @@ app_server <- function( input, output, session ) {
       <p style='margin-left: 20px'>
       <b>Data upload:</b>
       <ul>
-        <li> Using the <b>[Browse]</b> button, find and select the .csv file containing your data>
+        <li> Using the <b>[Browse]</b> button, find and select the .csv file containing your data
       </ul>
       <p style='margin-left: 20px'>
       <b>Data viewer:</b>
