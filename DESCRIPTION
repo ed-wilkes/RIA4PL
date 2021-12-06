@@ -1,5 +1,5 @@
-Package: RIA4PL
-Title: RIA4PL
+Package: RIACAL
+Title: RIACAL
 Version: 0.0.0.9000
 Authors@R: person('Edmund', 'Wilkes', email = 'edmund.wilkes@nhs.net', role = c('cre', 'aut'))
 Description: PKG_DESC.

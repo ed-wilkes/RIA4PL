@@ -16,13 +16,13 @@ app_ui <- function(request) {
     dashboardPage(
       
       ## Title ----
-      title = "RIA4PL"
+      title = "RIACAL"
       
       ## Header ----
       ,dashboardHeader(
         title = tags$a(
           href='http://www.nwlpathology.nhs.uk'
-          ,tags$img(src = 'www/logo-ria4pl.png', width = '65%')
+          ,tags$img(src = 'www/logo-riacal.png', width = '65%')
         )
       )
       
@@ -277,7 +277,7 @@ golem_add_external_resources <- function(){
     favicon(),
     bundle_resources(
       path = app_sys('app/www'),
-      app_title = 'RIA4PL'
+      app_title = 'RIACAL'
     )
     # Add here other external resources
     # for example, you can add shinyalert::useShinyalert() 
