@@ -392,17 +392,17 @@ app_server <- function( input, output, session ) {
       
       if (input$model_choice == "dr4pl") {
         params <- c(
-          round(model_output$model$parameters[1], 1)
+          round(model_output$model$parameters[1], 2)
           ,round(model_output$model$parameters[3], 3)
           ,round(model_output$model$parameters[2], 3)
-          ,round(model_output$model$parameters[4], 1)
+          ,round(model_output$model$parameters[4], 2)
         )
       } else if (input$model_choice == "drc") {
         params <- c(
-          round(model_output$model$fit$par[3], 1)
+          round(model_output$model$fit$par[3], 2)
           ,round(-model_output$model$fit$par[1], 3)
           ,round(model_output$model$fit$par[4], 3)
-          ,round(model_output$model$fit$par[2], 1)
+          ,round(model_output$model$fit$par[2], 2)
         )
       }
       
