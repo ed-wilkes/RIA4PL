@@ -30,7 +30,7 @@ app_server <- function( input, output, session ) {
   
   # Information page ----
   output$welcome_info <- renderUI({
-    HTML("<br><br><b>Welcome to the RAICAL app for North West London Pathology</b><br>
+    HTML("<br><br><b>Welcome to the RIACAL app for North West London Pathology</b><br>
              Instructions for use are defined in the subsections below.<br>")
   })
   
@@ -86,52 +86,29 @@ app_server <- function( input, output, session ) {
   })
   
   ## Data upload and viewer ----
-  # Reactive values definition
-  model_output <- reactiveValues(model = NULL)
-  notification <- reactiveValues(value = NULL)
-  plot_output <- reactiveValues(plot = NULL, boxes = NULL)
-  
   df_all <- reactive({
-    
-    # Read data
-    df <- readFile(input$input_file, headings = input$header_option, sheet = NULL)
-    
-    # Validate
-    validate(
-      need(
-        all(c("Name", "Counts") %in% colnames(df))
-        ,message = "Error: your input data do not contain the required 'Name' and 'Counts' columns. Please check the input .csv file and try again."
-      )
-    )
-    
-    # Process
-    df <- df %>%
+    readFile(input$input_file, headings = input$header_option, sheet = NULL) %>%
       dplyr::mutate(
         Conc = dplyr::case_when(
-          grepl("STD 1|STD1", Name) ~ 200.00
-          ,grepl("STD 2|STD2", Name) ~ 100.00
-          ,grepl("STD 3|STD3", Name) ~ 50.00
-          ,grepl("STD 4|STD4", Name) ~ 25.00
-          ,grepl("STD 5|STD5", Name) ~ 12.50
-          ,grepl("STD 6|STD6", Name) ~ 6.25
-          ,grepl("STD 7|STD7", Name) ~ 3.13
-          ,grepl("STD 8|STD8", Name) ~ 1.56
-          ,grepl("STD 9|STD9", Name) ~ 0.78
+          Name == "STD 1" ~ 200
+          ,Name == "STD 2" ~ 100
+          ,Name == "STD 3" ~ 50
+          ,Name == "STD 4" ~ 25
+          ,Name == "STD 5" ~ 12.5
+          ,Name == "STD 6" ~ 6.25
+          ,Name == "STD 7" ~ 3.125
+          ,Name == "STD 8" ~ 1.5625
+          ,Name == "STD 9" ~ 0.78125
           ,Name == "ZA" ~ 0
           ,TRUE ~ NA_real_ # i.e. NSB and and other additions
         )
       )
-    return(df)
-    
   })
   
   # Data viewer
   output$dt_data <- DT::renderDataTable({
     
-    # Requirements
     req(input$input_file)
-    
-    # Process DT
     dt <- DT::datatable(
       df_all()
       ,class = "cell-border stripe"
@@ -150,7 +127,7 @@ app_server <- function( input, output, session ) {
       )
     ) %>%
       DT::formatStyle(columns = colnames(df_all()), fontSize = "90%")
-  
+    
   })
   
   ## Model fitting ----
@@ -158,35 +135,37 @@ app_server <- function( input, output, session ) {
     
     # This reactive function wrangles the input data for use in later functions.
     req(input$input_file)
-    
-    # Process data
     df <- df_all() %>%
       # Calculate means, SDs, and CVs for display
       dplyr::group_by(Name) %>%
       dplyr::summarise(
-        `[hCG] (IU/L)` = mean(Conc)
+        `[hCG] (U/L)` = mean(Conc)
         ,`Count mean (cpm)` = round(mean(Counts, na.rm = TRUE), 0)
         ,`Count SD (cpm)` = round(sd(Counts, na.rm = TRUE), 0)
         ,`Count CV (%)` = round(`Count SD (cpm)` / `Count mean (cpm)` * 100, 1)
         ,n = dplyr::n()
       ) # %>%
     
-    ##################################################################
-    # Deprecated code that subtracts NSB and calculates response vs ZA
-    ##################################################################
-    # dplyr::mutate(
-    #   Subtract = (Count_mean - Count_mean[Name == "NSB"])
-    #   ,Response =  Count_mean / Count_mean[Name == "ZA"]
-    #   ,Logit = qlogis(Response)
-    #   ,Log_Conc = log10(Conc)
-    # ) %>%
-    # dplyr::filter(Name != "NSB")
+      ##################################################################
+      # Deprecated code that subtracts NSB and calculates response vs ZA
+      ##################################################################
+      # dplyr::mutate(
+      #   Subtract = (Count_mean - Count_mean[Name == "NSB"])
+      #   ,Response =  Count_mean / Count_mean[Name == "ZA"]
+      #   ,Logit = qlogis(Response)
+      #   ,Log_Conc = log10(Conc)
+      # ) %>%
+      # dplyr::filter(Name != "NSB")
     
     return(df)
     
   })
   
-  # Observe run button
+  # Reactive values definition
+  model_output <- reactiveValues(model = NULL)
+  notification <- reactiveValues(value = NULL)
+  plot_output <- reactiveValues(plot = NULL, boxes = NULL)
+  
   observeEvent(input$run_model, {
     notification$value <- "<br>Check the <b>[Model fitting]</b> tab for the results" 
   })
@@ -252,7 +231,7 @@ app_server <- function( input, output, session ) {
             plotTheme(14)+
             ggplot2::scale_x_log10()+
             ggplot2::annotation_logticks(side = "b")+
-            ggplot2::xlab("hCG concentration (IU/L)")+
+            ggplot2::xlab("hCG concentration (U/L)")+
             ggplot2::ylab("Gamma counts (cpm)")+
             ggplot2::expand_limits(y = 0)+
             ggplot2::scale_colour_manual(values = c("blue2", "red2"))+
@@ -282,7 +261,7 @@ app_server <- function( input, output, session ) {
             plotTheme(14)+
             ggplot2::scale_x_log10()+
             ggplot2::annotation_logticks(side = "b")+
-            ggplot2::xlab("hCG concentration (IU/L)")+
+            ggplot2::xlab("hCG concentration (U/L)")+
             ggplot2::ylab("Gamma counts (cpm)")+
             ggplot2::expand_limits(y = 0)
           ,tooltip = "text"
@@ -407,31 +386,23 @@ app_server <- function( input, output, session ) {
   # Export button (exports as a .csv file for PDM pickup)
   output$export_parameters <- downloadHandler(
     filename = function() {
-      
-      file_string <- stringr::str_match(input$input_file$name, "_(.*?)\\.")[,2]
-      if (is.na(file_string)) {
-        name <- paste0("Parameters_HCXXXXXX", ".csv")
-      } else {
-        name <- paste0("Parameters_", file_string, ".csv")
-      }
-      return(name)
-      
+      paste("Parameters_HCXXXXXX", ".csv", sep = "")
     }
     ,content = function(file) {
       
       if (input$model_choice == "dr4pl") {
         params <- c(
-          round(model_output$model$parameters[1], 2)
-          ,round(model_output$model$parameters[3], 3)
-          ,round(model_output$model$parameters[2], 3)
-          ,round(model_output$model$parameters[4], 2)
+          model_output$model$parameters[1]
+          ,model_output$model$parameters[3]
+          ,model_output$model$parameters[2]
+          ,model_output$model$parameters[4]
         )
       } else if (input$model_choice == "drc") {
         params <- c(
-          round(model_output$model$fit$par[3], 2)
-          ,round(-model_output$model$fit$par[1], 3)
-          ,round(model_output$model$fit$par[4], 3)
-          ,round(model_output$model$fit$par[2], 2)
+          model_output$model$fit$par[3]
+          ,-model_output$model$fit$par[1]
+          ,model_output$model$fit$par[4]
+          ,model_output$model$fit$par[2]
         )
       }
       
