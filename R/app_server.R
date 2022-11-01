@@ -87,7 +87,7 @@ app_server <- function( input, output, session ) {
   
   ## Data upload and viewer ----
   df_all <- reactive({
-    readFile(input$input_file, headings = input$header_option, sheet = NULL) %>%
+    readFile(input$input_file) %>%
       dplyr::mutate(
         Conc = dplyr::case_when(
           Name == "STD 1" ~ 200
@@ -105,10 +105,32 @@ app_server <- function( input, output, session ) {
       )
   })
   
+  # Data checks
+  observeEvent(input$input_file, {
+    checkInputFile(input, "input_file")
+  })
+  
   # Data viewer
   output$dt_data <- DT::renderDataTable({
     
     req(input$input_file)
+    
+    # Check file contents
+    column_vector <- c("ReactionTube", "Name", "Counts")
+    name_vector <- c("ZA", paste0("STD", 1:9))
+    
+    validate(
+      need(
+        all(column_vector %in% colnames(df_all())) == TRUE
+        ,message = "Error: File must contain 'ReactionTube', 'Name', and 'Counts' columns!"
+      )
+      ,need(
+        any(name_vector %in% df_all()$Name) == TRUE
+        ,message = "Error: The column 'Name' must contain 'ZA', 'STD1-9'!"
+      )
+    )
+    
+    # Parse data
     dt <- DT::datatable(
       df_all()
       ,class = "cell-border stripe"
@@ -135,7 +157,15 @@ app_server <- function( input, output, session ) {
     
     # This reactive function wrangles the input data for use in later functions.
     req(input$input_file)
-    df <- df_all() %>%
+    
+    # Remove excluded rows
+    if (!is.null(input$dt_data_rows_selected)) {
+      df <- df_all()[-input$dt_data_rows_selected,]
+    } else {
+      df <- df_all()
+    }
+    
+    df <- df %>%
       # Calculate means, SDs, and CVs for display
       dplyr::group_by(Name) %>%
       dplyr::summarise(
@@ -166,13 +196,13 @@ app_server <- function( input, output, session ) {
   notification <- reactiveValues(value = NULL)
   plot_output <- reactiveValues(plot = NULL, boxes = NULL)
   
-  observeEvent(input$run_model, {
-    notification$value <- "<br>Check the <b>[Model fitting]</b> tab for the results" 
-  })
+  # observeEvent(input$run_model, {
+  #   notification$value <- "<br>Check the <b>[Model fitting]</b> tab for the results" 
+  # })
   
   # Listen to both "run_model", "model_choice", and "input_file" inputs
   toListen <- reactive({
-    list(input$run_model, input$model_choice, input$input_file)
+    list(input$run_model) # , input$model_choice, input$input_file)
   })
   
   # Observe toListen() and execute code if values change
@@ -183,12 +213,28 @@ app_server <- function( input, output, session ) {
     # "notification", and "plot_output".
     # The model fitted to the data depends on "model_choice" and uses either
     # dr4pl (robust) or drc (regular). 
-    req(input$input_file)
+    
+    req(input$input_file, input$model_choice, input$run_model)
+    
+    # Remove excluded rows
+    if (!is.null(input$dt_data_rows_selected)) {
+      df <- df_all()[-input$dt_data_rows_selected,]
+    } else {
+      df <- df_all()
+    }
     
     if (input$model_choice == "dr4pl") {
-      model_output$model <- dr4pl::dr4pl(Counts ~ Conc, data = df_all(), method.robust = "absolute", method.init = "Mead")
+      model_output$model <- dr4pl::dr4pl(
+        Counts ~ Conc, data = df
+        ,method.robust = "absolute"
+        ,method.init = "Mead"
+      )
     } else if (input$model_choice == "drc") {
-      model_output$model <- drc::drm(Counts ~ Conc, data = df_all(), robust = "median", fct = drc::LL.4(names = c("Slope", "Lower", "Upper", "IC50")))
+      model_output$model <- drc::drm(
+        Counts ~ Conc, data = df
+        ,robust = "median"
+        ,fct = drc::LL.4(names = c("Slope", "Lower", "Upper", "IC50"))
+      )
     }
     
     # Make plots ----
@@ -199,7 +245,7 @@ app_server <- function( input, output, session ) {
     } else {
       if (input$model_choice == "dr4pl") {
         
-        df_points <- df_all() %>%
+        df_points <- df %>%
           dplyr::filter(!is.na(Conc)) %>%
           dplyr::mutate(outlier = "No")
         df_points$outlier[model_output$model$idx.outlier] <- "Yes"
@@ -219,7 +265,12 @@ app_server <- function( input, output, session ) {
               ,size = 4
               ,ggplot2::aes(
                 colour = outlier
-                ,text = paste0("Standard: ", Name, "\nConcentration: ", Conc, "\nTube: ", ReactionTube, "\nCount: ", Counts)
+                ,text = paste0(
+                  "Standard: ", Name
+                  ,"\nConcentration: ", Conc
+                  ,"\nTube: ", ReactionTube
+                  ,"\nCount: ", Counts
+                )
                 ,shape = outlier
               )
             )+
@@ -245,13 +296,20 @@ app_server <- function( input, output, session ) {
         df_pred$Counts_pred <- predict(object = model_output$model, newdata = df_pred)
         
         plot_output$plot <- plotly::ggplotly(
-          ggplot2::ggplot(df_all(), aes(x = Conc, y = Counts))+
+          ggplot2::ggplot(df, aes(x = Conc, y = Counts))+
             ggplot2::geom_point(
               alpha = 0.75
               ,size = 4
               ,colour = "blue2"
               ,shape = 16
-              ,ggplot2::aes(text = paste0("Standard: ", Name, "\nConcentration: ", Conc, "\nTube: ", ReactionTube, "\nCount: ", Counts))
+              ,ggplot2::aes(
+                text = paste0(
+                  "Standard: ", Name,
+                  "\nConcentration: ", Conc,
+                  "\nTube: ", ReactionTube,
+                  "\nCount: ", Counts
+                )
+              )
             )+
             ggplot2::geom_line(
               data = df_pred
@@ -321,12 +379,15 @@ app_server <- function( input, output, session ) {
       )
     }
     
+    # Update focus to modelling tab
+    updateTabItems(session, "tabs", selected = "modelling")
+    
   })
   
-  # Update text
-  output$run_button_text <- renderUI({
-    HTML(notification$value)
-  })
+  # Update text (DEPRECATED)
+  # output$run_button_text <- renderUI({
+  #   HTML(notification$value)
+  # })
   
   # Model fit plot
   output$model_fit <- plotly::renderPlotly({

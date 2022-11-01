@@ -1,3 +1,10 @@
+#' plotTheme
+#'
+#' @param font_size numeric denoting font size to use
+#'
+#' @return ggplot2 theme object
+#' @export
+#'
 plotTheme <- function(font_size) {
   return(ggplot2::theme(
     panel.background = element_blank()

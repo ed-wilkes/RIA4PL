@@ -1,3 +1,13 @@
+#' predictCurve
+#'
+#' @param params numeric vector giving model parameters
+#' @param data data.frame containing x values to predict
+#'
+#' @return numeric vector of predicted y values
+#' @export
+#'
+#' @examples
+#' 
 predictCurve <- function(params, data) {
   a <- params[1]
   b <- abs(params[2])

@@ -4,6 +4,8 @@
 #'     DO NOT REMOVE.
 #' @import shiny
 #' @import shinydashboard
+#' @import shinyFeedback
+#' 
 #' @noRd
 app_ui <- function(request) {
   
@@ -21,7 +23,7 @@ app_ui <- function(request) {
       ## Header ----
       ,dashboardHeader(
         title = tags$a(
-          href='http://www.nwlpathology.nhs.uk'
+          href='http://www.github.com/nwlp-clinical-biochemistry/RIACAL'
           ,tags$img(src = 'www/logo-riacal.png', width = '65%')
         )
       )
@@ -29,7 +31,8 @@ app_ui <- function(request) {
       ## Sidebar ----
       ,dashboardSidebar(
         sidebarMenu(
-          menuItem("Info and data upload", tabName = "data_upload", icon = icon("file-upload"))
+          id = "tabs"
+          ,menuItem("Info and data upload", tabName = "data_upload", icon = icon("file-upload"))
           ,menuItem("Model fitting", tabName = "modelling", icon = icon("chart-line"))
         )
       )
@@ -90,9 +93,15 @@ app_ui <- function(request) {
               border-left-color:#56AF31;
               border-right-color:#56AF31;
               border-top-color:#56AF31;
+            }
+            .shiny-output-error-validation {
+              color: #ff0000;
             }"
           )
         )
+        
+        # Use shinyFeedback
+        ,shinyFeedback::useShinyFeedback()
         
         # Tabs ----
         ,tabItems(
@@ -108,6 +117,7 @@ app_ui <- function(request) {
                   title = "General information"
                   ,solidHeader = TRUE
                   ,status = "primary"
+                  ,collapsible = TRUE
                   ,width = 12
                   ,tags$img(src = "www/logo-nwlp.png", width = "40%")
                   ,htmlOutput("welcome_info", inline = TRUE)
@@ -145,7 +155,7 @@ app_ui <- function(request) {
                       ,icon = icon("play")
                       ,width = "100%"
                     )
-                    ,span(htmlOutput("run_button_text"), style="color:red")
+                    # ,span(htmlOutput("run_button_text"), style="color:red")
                   )
                 )
               )
@@ -160,6 +170,7 @@ app_ui <- function(request) {
                     ,width = 12
                     ,solidHeader = TRUE
                     ,status = "primary"
+                    ,h5("NB: Click on rows you wish to exclude from the analysis!")
                     ,DT::dataTableOutput("dt_data")
                   )
                 )
