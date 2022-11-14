@@ -1,0 +1,13 @@
+name: RIACAL
+title: RIACAL
+username:
+account: ed-wilkes
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 7619236
+bundleId: 6511998
+url: https://ed-wilkes.shinyapps.io/riacal/
+when: 1668432766.47502
+lastSyncTime: 1668432766.47503
+asMultiple: FALSE
+asStatic: FALSE

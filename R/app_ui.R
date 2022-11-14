@@ -119,7 +119,7 @@ app_ui <- function(request) {
                   ,status = "primary"
                   ,collapsible = TRUE
                   ,width = 12
-                  ,tags$img(src = "www/logo-nwlp.png", width = "40%")
+                  # ,tags$img(src = "www/logo-nwlp.png", width = "40%")
                   ,htmlOutput("welcome_info", inline = TRUE)
                   ,htmlOutput("data_upload_info", inline = TRUE)
                   ,htmlOutput("modelling_info", inline = TRUE)

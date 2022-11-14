@@ -30,7 +30,7 @@ app_server <- function( input, output, session ) {
   
   # Information page ----
   output$welcome_info <- renderUI({
-    HTML("<br><br><b>Welcome to the RIACAL app for North West London Pathology</b><br>
+    HTML("<b>Welcome to the RIACAL app for North West London Pathology</b><br>
              Instructions for use are defined in the subsections below.<br>")
   })
   

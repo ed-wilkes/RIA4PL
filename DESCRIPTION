@@ -17,7 +17,8 @@ Imports:
     shiny,
     shinycssloaders,
     shinydashboard,
-    shinyFeedback
+    shinyFeedback,
+    pkgload
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.1
