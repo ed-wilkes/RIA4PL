@@ -5,9 +5,9 @@ account: ed-wilkes
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 7619236
-bundleId: 6511998
+bundleId: 6528493
 url: https://ed-wilkes.shinyapps.io/riacal/
-when: 1668432766.47502
-lastSyncTime: 1668432766.47503
+when: 1668763358.28547
+lastSyncTime: 1668763358.28548
 asMultiple: FALSE
 asStatic: FALSE

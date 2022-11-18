@@ -50,7 +50,6 @@ app_server <- function( input, output, session ) {
         <li>Check the data you have uploaded carefully
         <li>Choose the model type you wish to fit (defaults to 'Robust' - this is optimal in most instances)
         <li>When ready, press the <b>[Fit model]</b> button
-        <li>If the model type is changed retrospectively, the analysis will automatically update
       </ul>
       "
     )
