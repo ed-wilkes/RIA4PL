@@ -1,5 +1,5 @@
 # RIACAL
-R package for RIA calibration curves
+Shiny app for RIA calibration curves
 
 This app can be installed as an R package using the following command (requiring the `devtools` R package):
 
