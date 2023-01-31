@@ -224,13 +224,16 @@ app_server <- function( input, output, session ) {
     
     if (input$model_choice == "dr4pl") {
       model_output$model <- dr4pl::dr4pl(
-        Counts ~ Conc, data = df
-        ,method.robust = "absolute"
-        ,method.init = "Mead"
+        Counts ~ Conc
+        ,data = df
+        ,trend = "decreasing"
+        ,method.robust = "Huber" # best balanced of absolute and squared loss functions 
+        ,method.init = "logistic"
       )
     } else if (input$model_choice == "drc") {
       model_output$model <- drc::drm(
-        Counts ~ Conc, data = df
+        Counts ~ Conc
+        ,data = df
         ,robust = "median"
         ,fct = drc::LL.4(names = c("Slope", "Lower", "Upper", "IC50"))
       )
